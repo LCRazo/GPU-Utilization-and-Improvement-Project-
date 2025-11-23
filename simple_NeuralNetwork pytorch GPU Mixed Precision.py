@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import pandas as pd
 import matplotlib.pyplot as plt
+# Mixed precision imports
+from torch.cuda.amp import autocast, GradScaler
 from sklearn.model_selection import train_test_split
 # %matplotlib inline
 
@@ -73,6 +75,7 @@ if torch.cuda.is_available():
   # Set the criterion of model to measure the error, how far off the predictions are from the data
   criterion = nn.CrossEntropyLoss().cuda(0)
   # Choose Adam Optimizer, lr = learning rate (if error doesn't go down after a bunch of iterations (epochs), lower our learning rate)
+  scaler = GradScaler()
   optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
   # Train our model!
@@ -81,16 +84,21 @@ if torch.cuda.is_available():
   losses = []
   for i in range(epochs):
     # Go forward and get a prediction
-    y_pred = model.forward(X_train) # Get predicted results
+    # y_pred = model.forward(X_train) # Get predicted results
 
     # Measure the loss/error, gonna be high at first
-    loss = criterion(y_pred, y_train) # predicted values vs the y_train
+    # loss = criterion(y_pred, y_train) # predicted values vs the y_train
 
+    # This is for mixed precision
+    with torch.cuda.amp.autocast():
+      # Go forward and get a prediction
+      y_pred = model.forward(X_train) # Get predicted results
+      # Measure the loss/error, gonna be high at first
+      loss = criterion(y_pred, y_train) # predicted values vs the y_train
 
-
-    # Keep Track of our losses
-    lossCPU = loss.cpu()
-    losses.append(lossCPU.detach().numpy())
+      # Keep Track of our losses
+      lossCPU = loss.cpu()
+      losses.append(lossCPU.detach().numpy())
 
     # print every 10 epoch
     if i % 10 == 0:
@@ -98,9 +106,11 @@ if torch.cuda.is_available():
 
     # Do some back propagation: take the error rate of forward propagation and feed it back
     # thru the network to fine tune the weights
+    # Backpropagation with mixed precision
     optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
+    scaler.scale(loss).backward()
+    scaler.step(optimizer)
+    scaler.update()
 
   stats = torch.cuda.memory_stats()
         

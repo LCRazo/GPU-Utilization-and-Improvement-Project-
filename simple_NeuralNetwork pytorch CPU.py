@@ -126,6 +126,19 @@ with torch.no_grad():
 
 print(f'We got {correct} correct!')
 
+# Get current allocated memory
+allocated_memory = torch.cuda.memory_allocated(0)
+print(f"Current allocated memory: {allocated_memory / (1024**2):.2f} MB")
+
+# Get reserved memory
+reserved_memory = torch.cuda.memory_reserved(0)
+print(f"Reserved memory: {reserved_memory / (1024**2):.2f} MB")
+
+# Get peak allocated memory
+peak_allocated_memory = torch.cuda.max_memory_allocated(0)
+print(f"Peak allocated memory: {peak_allocated_memory / (1024**2):.2f} MB")
+# print(torch.cuda.memory_summary(device=0, abbreviated=True))
+
 """ new_iris = torch.tensor([4.7, 3.2, 1.3, 0.2])
       with torch.no_grad():
         print(model(new_iris))
